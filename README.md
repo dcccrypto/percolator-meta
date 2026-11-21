@@ -2,6 +2,8 @@
 
 Solana program that incentivizes insurance capital deposits for [Percolator](https://github.com/aeyakovenko/percolator-prog) markets, governed by MetaDAO futarchy.
 
+Workspace layout: `program/` is the insurance deposit program, `governance/` is a small governance-adapter program that gates the governance-only instructions, `spec.md` is the design spec.
+
 ## How It Works
 
 1. **DAO creates a market** — MetaDAO governance initializes a Percolator market and sets up an insurance deposit pool with COIN reward parameters (yield rate, epoch length)
@@ -94,7 +96,7 @@ As defense-in-depth, withdrawals use proportional math: `actual = min(amount, am
 
 ## Tested Invariants
 
-Each invariant is enforced by at least one integration test. Run `RUST_MIN_STACK=8388608 cargo test --manifest-path program/Cargo.toml --test integration` to verify all 87.
+Each invariant is enforced by at least one integration test. Run `RUST_MIN_STACK=8388608 cargo test --manifest-path program/Cargo.toml --test integration` to run the integration suite (95 tests at the time of writing).
 
 ### Capital protection
 - DAO cannot draw depositor capital — `test_draw_depositor_capital_rejected`
@@ -163,6 +165,8 @@ Each invariant is enforced by at least one integration test. Run `RUST_MIN_STACK
 | 3 | `init_coin_config` | One-time COIN mint authority setup (governance-gated) |
 | 4 | `claim_stake_rewards` | Harvest pending COIN without withdrawing collateral |
 | 5 | `draw_insurance` | Governance-gated: withdraw profits from vault (only excess above total_staked) |
+| 6 | `register_insurance_operator` | Register the market's reward PDA as the Percolator market's insurance operator (current Percolator admin only, before admin burn) |
+| 7 | `pull_insurance` | Permissionless keeper: pull tokens from the Percolator insurance fund into the deposit vault (destination is always the vault) |
 
 ## Accounts
 
@@ -175,6 +179,8 @@ Each invariant is enforced by at least one integration test. Run `RUST_MIN_STACK
 | Mint Authority | `[b"coin_mint_authority", coin_mint]` | PDA that signs COIN mints |
 
 ## Building
+
+`program/` depends on `percolator-prog` by relative path (`../../percolator-prog`), so check it out next to this repo. Its build script also checks that the engine checkout is at the pinned commit (see `ci/deployed-refs.env` in percolator-prog); a plain `cargo check` fails until that matches.
 
 ```bash
 cargo build-sbf --manifest-path program/Cargo.toml
